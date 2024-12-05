@@ -66,11 +66,16 @@ namespace eigenValue
                         }
                     }
                     matr[i, j] = Convert.ToDouble(subLine);
+                    j++;
+                    if(j != n)
+                    {
+                        throw new Exception();
+                    }
                 }
             }
             catch
             {
-                MessageBox.Show("Wrong input of extended matrix", "Worning");
+                MessageBox.Show("Wrong input of matrix", "Worning");
                 return;
             }
             if(!IsSimetric(matr, n))
