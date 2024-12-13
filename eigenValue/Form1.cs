@@ -8,6 +8,7 @@ using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Linq;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace eigenValue
@@ -23,6 +24,7 @@ namespace eigenValue
         {
             textBox3.Text = "";
             textBox5.Text = "";
+            textBox6.Text = "";
             int n = 0;
             try
             {
@@ -221,7 +223,7 @@ namespace eigenValue
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            textBox1.Text = $"2 2 -2{Environment.NewLine}2 5 -4{Environment.NewLine}-2 -4 5";
+            textBox1.Text = $"3 0 0{Environment.NewLine}0 2 0{Environment.NewLine}0 0 1";
             textBox2.Text = "3";
             textBox4.Text = "0,0001";
         }
@@ -239,6 +241,16 @@ namespace eigenValue
             catch
             {
                 MessageBox.Show("Input dimension", "Worning");
+                return;
+            }
+            double eps = 0;
+            try
+            {
+                eps = Convert.ToDouble(textBox4.Text);
+            }
+            catch
+            {
+                MessageBox.Show("Input infelicity", "Worning");
                 return;
             }
             double[,] matr = new double[n, n];
@@ -291,55 +303,39 @@ namespace eigenValue
             {
                 for (int j = i+1; j < n; j++)
                 {
+                    if (newA[i-1,j] == 0)
+                    {
+                        continue;
+                    }
                     double Cos = CosFi(i,j,matr);
                     double Sin = SinFi(i,j, matr);
                     newA = A(B(matr, n, Cos, Sin, i, j), n, Cos, Sin, i, j);
                     
                 }
             }
-            double[,] ext = ToExtend(newA, n);
-            double[] lyamda = RunMethod(ext, n);
-
-            textBox6.Text += $"D = {D(lyamda[0], newA, n)}";
-            textBox6.AppendText(Environment.NewLine);
-            Output(lyamda, n);
-        }
-        public double[,] ToExtend(double[,] matr, int n)
-        {
-            double[,] ext = new double[n,n+1];
-            for(int i = 0; i < n; i++)
+            Output(newA, n);
+            double x0;
+            double xNext = newA[0, 0];
+            double h = 0.1;
+            int iteration = 0;
+            do
             {
-                for(int j = 0; j < n; j++)
-                {
-                    if(j == n)
-                    {
-                        ext[i,j] = 0;
-                    }
-                    else
-                    {
-                        ext[i,j] = matr[i,j];
-                    }
-                }
-            }
-            return ext;
+                x0 = xNext;
+                xNext = NewX(x0, newA, n, h);
+                h /= 10;
+                iteration++;
+            } while (Math.Abs(xNext - x0) >= eps);
+            textBox3.Text = $"{xNext}";
+            textBox5.Text = $"{iteration}";
         }
-        //public double[,] Multiplex(double[,] a, double[,] b, int n)
-        //{
-        //    double[,] res = new double[n, n];
-        //    for (int i = 0; i < n; i++)
-        //    {
-        //        for (int j = 0; j < n; j++)
-        //        {
-        //            double sum = 0;
-        //            for (int i1 = 0; i1 < n; i1++)
-        //            {
-        //                sum += a[i, i1] * b[i1, j];
-        //            }
-        //            res[i, j] = sum;
-        //        }
-        //    }
-        //    return res;
-        //}
+        public double NewX(double x, double[,] a, int n, double h)
+        {
+            return x - D(x, a, n)/Derivative(x, a, n, h);
+        }
+        public double Derivative(double x, double[,] a, int n, double h)
+        {
+            return (D(x+h, a, n) - D(x, a, n))/h;
+        }
         public void Output(double[,] matr, int n)
         {
             textBox3.Text = "";
@@ -347,7 +343,7 @@ namespace eigenValue
             {
                 for (int j = 0; j < n; j++)
                 {
-                    textBox6.Text += $"{matr[i, j]}\t";
+                    textBox6.Text += string.Format($"{{0:0.####}}\t ", matr[i, j]);
                 }
                 textBox6.AppendText(Environment.NewLine);
             }
@@ -370,16 +366,6 @@ namespace eigenValue
         {
             return a[l-1, m]/(Math.Sqrt(a[l-1, l]*a[l-1, l] + a[l-1, m]*a[l-1, m]));
         }
-        //public (double[] l1, double[] m1) B(double[,] a, int n, double Cos, double Sin, int l, int m)
-        //{
-        //    (double[] l1, double[] m1) b = (new double[n], new double[n]);
-        //    for (int j = 1; j < n; j++)
-        //    {
-        //        b.l1[j] = a[l, j]*Cos + a[m, j]*Sin;
-        //        b.m1[j] = -a[l, j]*Sin + a[m, j]*Cos;
-        //    }
-        //    return b;
-        //}
         public double[,] B(double[,] a, int n, double Cos, double Sin, int l, int m)
         {
             double[,] b = new double[n, n];
@@ -435,27 +421,19 @@ namespace eigenValue
                 return (a[n-1,n-1] - x) * D(x, a, n-1) - a[n-1,n-2] * a[n-2,n-1]*D(x,a,n-2);
             }
         }
-        public double[] RunMethod(double[,] matr, int n)
+
+        private void button3_Click(object sender, EventArgs e)
         {
-            double an1 = -matr[n-1, n-2] / matr[n-1, n-1];
-            double bn1 = matr[n-1, n] / matr[n-1, n-1];
-            double[] a = new double[n-1];
-            double[] b = new double[n-1];
-            a[n-2] = an1;
-            b[n-2] = bn1;
-            double[] xi = new double[n];
-            for (int i = n-3; i >= 0; i--)
-            {
-                a[i] = -matr[i+1, i] / (a[i+1]*matr[i+1, i+2] + matr[i+1, i+1]);
-                b[i] = (matr[i+1, n] - b[i+1]*matr[i+1, i+2]) / (a[i+1]*matr[i+1, i+2] + matr[i+1, i+1]);
-            }
-            xi[1] = (-b[0]- matr[0, n] * a[0] / matr[0, 0]) / (-1 - matr[0, 1] * a[0] / matr[0, 0]);
-            xi[0] = (matr[0, n] - matr[0, 1] * xi[1]) / matr[0, 0];
-            for (int i = 2; i < n; i++)
-            {
-                xi[i] = a[i-1] * xi[i-1] + b[i-1];
-            }
-            return xi;
+            textBox1.Text = $"3 0 0{Environment.NewLine}0 2 0{Environment.NewLine}0 0 1";
+            textBox2.Text = "3";
+            textBox4.Text = "0,0001";
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            textBox1.Text = $"3 2 1{Environment.NewLine}2 4 0{Environment.NewLine}1 0 6";
+            textBox2.Text = "3";
+            textBox4.Text = "0,0001";
         }
     }
 }
